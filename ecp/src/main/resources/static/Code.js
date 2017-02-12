@@ -118,6 +118,32 @@ function Verefic_SignCadesBES_File_ot() {
     }
 }
 
+function Verefic_SignCadesBES_File_sov(){
+    var canAsync = !!cadesplugin.CreateObjectAsync;
+    if (canAsync) {
+        include_async_code().then(function () {
+            return SignCadesBES_Async_File_veref();
+        	
+        });
+    } else {
+        //return SignCadesBES_NPAPI_File(id);
+    	alert('Не доработано');
+    }
+}
+
+function test(){
+    var canAsync = !!cadesplugin.CreateObjectAsync;
+    if (canAsync) {
+        include_async_code().then(function () {
+            return SignCadesBES_Async_File_veref_getfile();
+        	
+        });
+    } else {
+        //return SignCadesBES_NPAPI_File(id);
+    	alert('Не доработано');
+    }
+}
+
 
 function Common_SignCadesXLong(id)
 {

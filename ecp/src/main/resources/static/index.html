@@ -81,6 +81,7 @@
                                                 var header = ";base64,";
                                                 var fileData = reader.result;
                                                 fileContent = fileData.substr(fileData.indexOf(header) + header.length);
+                                                alert(fileContent);
                                             };
                                         };
                                     </script>
@@ -111,6 +112,15 @@
                                 </div>
                                 <br>
 								<div>
+                                    <input type='button' value='Снять и проверить совмещенную подпись' 
+                                           onclick="test()" />
+                                </div>
+                                <div>
+                                    <input type='button' value='Проверить совмещенную подпись' 
+                                           onclick="Verefic_SignCadesBES_File_sov()" />
+                                </div>
+                                <br>
+								<div>
                                     <input type='button' value='Проверить раздельную подпись' 
                                            onclick="
                                                     if ('' == openFileButton.value)
@@ -121,6 +131,7 @@
                                                     else
                                                     	Verefic_SignCadesBES_File_ot()" />
                                 </div>
+                                
                                 
 
                                 <p id="info_msg" name="SignatureTitle">Подпись:</p>

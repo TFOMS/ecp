@@ -406,6 +406,14 @@ function SignCadesBES_Async(certListBoxId, data, setDisplayData) {
     }, certListBoxId); //cadesplugin.async_spawn
 }
 
+function ConvertDate(date) {
+    switch (navigator.appName) {
+        case "Microsoft Internet Explorer":
+            return date.getVarDate();
+        default:
+            return date;
+    }
+}
 
 function SignCadesBES_Async_File_razdelnya(certListBoxId) {
     cadesplugin.async_spawn(function*(arg) {
@@ -442,16 +450,30 @@ function SignCadesBES_Async_File_razdelnya(certListBoxId) {
         {
             FillCertInfo_Async(certificate);
             var errormes = "";
+            var oSigner ;
             try {
-                var oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+                oSigner = yield cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
             } catch (err) {
                 errormes = "Failed to create CAdESCOM.CPSigner: " + err.number;
                 throw errormes;
             }
+            
+            /*var oSigningTimeAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
+            yield oSigningTimeAttr.Name = 0//CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME;
+            var oTimeNow = new Date();
+            yield oSigningTimeAttr.Value = ConvertDate(oTimeNow);
+
+            var oDocumentNameAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
+            yield oDocumentNameAttr.Name = 1//CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME;
+            yield oDocumentNameAttr.Value = "Document Name";
+            yield oSigner.AuthenticatedAttributes2.Add(oSigningTimeAttr);
+            yield oSigner.AuthenticatedAttributes2.Add(oDocumentNameAttr);
+*/
+            
+            
             var oSigningTimeAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
 
-            var CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME = 0;
-            yield oSigningTimeAttr.propset_Name(CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME);
+            yield oSigningTimeAttr.propset_Name(cadesplugin.CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME);
             var oTimeNow = new Date();
             yield oSigningTimeAttr.propset_Value(oTimeNow);
             var attr = yield oSigner.AuthenticatedAttributes2;
@@ -459,11 +481,10 @@ function SignCadesBES_Async_File_razdelnya(certListBoxId) {
 
 
             var oDocumentNameAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
-            var CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME = 1;
-            yield oDocumentNameAttr.propset_Name(CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME);
+            yield oDocumentNameAttr.propset_Name(cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME);
             yield oDocumentNameAttr.propset_Value("Document Name");
             yield attr.Add(oDocumentNameAttr);
-
+            
             if (oSigner) {
                 yield oSigner.propset_Certificate(certificate);
             }
@@ -473,9 +494,10 @@ function SignCadesBES_Async_File_razdelnya(certListBoxId) {
             }
 
             var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
-            var CADES_BES = 1;
-
-            var dataToSign = Base64.encode(fileContent); // fileContent - объявлен в Code.js
+            var CADESCOM_CADES_BES = 1;
+            var dataToSign = fileContent; // fileContent - объявлен в Code.js
+            //var dataToSign = Base64.encode(fileContent);
+            
             if (dataToSign) {
                 // Данные на подпись ввели
                 yield oSignedData.propset_ContentEncoding(1); //CADESCOM_BASE64_TO_BINARY
@@ -483,7 +505,7 @@ function SignCadesBES_Async_File_razdelnya(certListBoxId) {
                 yield oSigner.propset_Options(1); //CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN
                 try {
                     var StartTime = Date.now();
-                    Signature = yield oSignedData.SignCades(oSigner, CADES_BES,true);
+                    Signature = yield oSignedData.SignCades(oSigner, CADESCOM_CADES_BES,true);
                     var EndTime = Date.now();
                     document.getElementsByName('TimeTitle')[0].innerHTML = "Время выполнения: " + (EndTime - StartTime) + " мс";
                 }
@@ -505,30 +527,124 @@ function SignCadesBES_Async_File_razdelnya(certListBoxId) {
 
 
 function SignCadesBES_Async_File_veref_razdelnya(){
+	var CADESCOM_CADES_BES = 1;
 	cadesplugin.async_spawn(function*(arg) {
 	
 	var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 	 // Предварительно закодированные в BASE64 бинарные данные
      // В данном случае закодирован вложенный файл
-	 var dataToVerify ='';
+	 var dataToVerify = fileContent;
 	 
 	 // подписанное сообщение
-	 var sSignedMessage = '';
+	 var sSignedMessage = document.getElementById("SignatureTxtBox").value;
+	 var oSigner;
+	 var oSignerN;
+	 var oSignerContent;
      try {
          // Значение свойства ContentEncoding должно быть задано
          // до заполнения свойства Content
     	 yield oSignedData.propset_ContentEncoding(1); //CADESCOM_BASE64_TO_BINARY
          yield oSignedData.propset_Content(dataToVerify);
          yield oSignedData.VerifyCades(sSignedMessage, CADESCOM_CADES_BES, true);
+         oSigner = yield oSignedData.Signers;
+         oSignerN = yield oSigner.Item(1);
+         oSignerContent = yield oSignedData.Content;
+;
      } catch (err) {
          alert("Failed to verify signature. Error: " + cadesplugin.getLastError(err));
          return false;
      }
 
-    alert('fd');
+     var SigningTime = yield oSignerN.SigningTime;
+     //var SigningTime2 = yield oSignerN.SignatureTimeStampTime;
+     
+     alert(SigningTime);
+     //alert(SigningTime2);
+     alert(oSignerN);
+     return true;
+     
+	});
+	
+	
+}
+
+function SignCadesBES_Async_File_veref(){
+	var CADESCOM_CADES_BES = 1;
+	cadesplugin.async_spawn(function*(arg) {
+	
+	var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+	 
+	 // подписанное сообщение
+	 var sSignedMessage = document.getElementById("SignatureTxtBox").value;
+	 var oSigner;
+	 var oSignerN;
+	 var oSignerContent;
+     try {
+         yield oSignedData.VerifyCades(sSignedMessage, CADESCOM_CADES_BES);
+         oSigner = yield oSignedData.Signers;
+         oSignerN = yield oSigner.Item(1);
+         //oSignerContent = yield oSignedData.Content;
+     } catch (err) {
+         alert("Failed to verify signature. Error: " + cadesplugin.getLastError(err));
+         return false;
+     }
+
+     
+     
+     var SigningTime = yield oSignerN.SigningTime;
+     var cert = yield oSignerN.Certificate;
+     var owner = yield cert.SubjectName;
+     var serinfvalid = yield cert.IsValid();
+     var IsValid = yield serinfvalid.Result;
+     //var authenticatedAttributes2_m_list = yield authenticatedAttributes2_m.Item(1);
+     //var authenticatedAttributes2_from_list_Name = yield authenticatedAttributes2_m_list.Name;
+     // bad var authenticatedAttributes2_from_list_Value = yield authenticatedAttributes2_m_list.Value;
+     
+
+     
+     alert(SigningTime);
+     alert('Действительна: \n'+IsValid+'\n Владелец: \n'+owner);
+     return true;
 	});
 }
 
+
+function SignCadesBES_Async_File_veref_getfile(){
+	var CADESCOM_CADES_BES = 1;
+	cadesplugin.async_spawn(function*(arg) {
+	
+	var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+	 
+	 // подписанное сообщение
+	 var sSignedMessage = document.getElementById("SignatureTxtBox").value;
+	 var promise;
+	 var datafromBase64;
+	 var test;
+     try {
+         yield oSignedData.VerifyCades(sSignedMessage, CADESCOM_CADES_BES);
+         yield oSignedData.propset_ContentEncoding(1);
+         fromBase64 = yield oSignedData.Content;
+         //test = Base64.decode(fromBase64);
+         var element = document.createElement('a');
+         element.setAttribute('href', 'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;charset=utf-8,' + encodeURIComponent(Base64.decode(fromBase64)));
+         element.setAttribute('download', 'test.docx');
+
+         
+         document.body.appendChild(element);
+
+         element.click();
+
+         
+         
+         alert('rrr '+oSignedData.Content);
+     } catch (err) {
+         alert("Failed to verify signature. Error: " + cadesplugin.getLastError(err));
+         return false;
+     }
+
+     alert('ok '+datafromBase64);
+	});
+}
 
 
 function SignCadesBES_Async_File(certListBoxId) {
@@ -572,10 +688,10 @@ function SignCadesBES_Async_File(certListBoxId) {
                 errormes = "Failed to create CAdESCOM.CPSigner: " + err.number;
                 throw errormes;
             }
+                        
             var oSigningTimeAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
 
-            var CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME = 0;
-            yield oSigningTimeAttr.propset_Name(CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME);
+            yield oSigningTimeAttr.propset_Name(cadesplugin.CAPICOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME);
             var oTimeNow = new Date();
             yield oSigningTimeAttr.propset_Value(oTimeNow);
             var attr = yield oSigner.AuthenticatedAttributes2;
@@ -583,9 +699,8 @@ function SignCadesBES_Async_File(certListBoxId) {
 
 
             var oDocumentNameAttr = yield cadesplugin.CreateObjectAsync("CADESCOM.CPAttribute");
-            var CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME = 1;
-            yield oDocumentNameAttr.propset_Name(CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME);
-            yield oDocumentNameAttr.propset_Value("Document Name");
+            yield oDocumentNameAttr.propset_Name(cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME);
+            yield oDocumentNameAttr.propset_Value("Test document name");
             yield attr.Add(oDocumentNameAttr);
 
             if (oSigner) {
@@ -599,7 +714,8 @@ function SignCadesBES_Async_File(certListBoxId) {
             var oSignedData = yield cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
             var CADES_BES = 1;
 
-            var dataToSign = Base64.encode(fileContent); // fileContent - объявлен в Code.js
+            var dataToSign = fileContent; // fileContent - объявлен в Code.js
+            //var dataToSign = Base64.encode(fileContent); 
             if (dataToSign) {
                 // Данные на подпись ввели
                 yield oSignedData.propset_ContentEncoding(1); //CADESCOM_BASE64_TO_BINARY
